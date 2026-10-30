@@ -1,0 +1,26 @@
+# Only porting source and documentation belong in this repository.
+*
+!/.gitignore
+!/README.md
+!/compat/
+!/compat/*.m
+!/scripts/
+!/scripts/*.py
+!/scripts/*.sh
+!/tests/
+!/tests/*.m
+
+# Game packages, outputs and local data must never be committed.
+*.ipa
+*.app/
+*.dylib
+*.zip
+*.mcworld
+*.mcpack
+build/
+dist/
+Payload/
+__pycache__/
+*.pyc
+.DS_Store
+.env*
