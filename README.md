@@ -1,6 +1,6 @@
 # Minecraft iOS 移植到 macOS
 
-将本目录的 `Minecraft_ipa_ios_1.26.13.0.ipa` 制作为 Apple Silicon Mac 可运行的兼容应用。保留原始 IPA；游戏资源和程序不上传。
+将本目录的 `MCPE-iOS-26.60-universal.ipa` 制作为 Apple Silicon Mac 可运行的 Minecraft 26.60 兼容应用。保留原始 IPA；游戏资源和程序不上传。
 
 这是对现有 iOS ARM64 程序进行二进制兼容适配，不是拥有 Minecraft 源码后的重新编译，也不支持 Intel Mac。
 
@@ -10,7 +10,7 @@
 
 ## 使用
 
-先克隆仓库，并将自行准备的 `Minecraft_ipa_ios_1.26.13.0.ipa` 放在项目根目录：
+先克隆仓库，并将自行准备的 `MCPE-iOS-26.60-universal.ipa` 放在项目根目录：
 
 ```sh
 git clone https://github.com/rhotov/mcmac.git
@@ -64,6 +64,12 @@ python3 scripts/verify_build.py
 应用保留 `com.mojang.minecraftpe` 标识，存档位于 `~/Library/Containers/com.mojang.minecraftpe/Data/Documents/`。构建器不删除已有存档。
 
 如需诊断窗口尺寸，可在启动程序时设置环境变量 `MCMAC_DIAGNOSTICS=1`；默认不输出这些尺寸诊断。
+
+## 验证范围
+
+26.60 已验证构建及签名、启动、主菜单、世界列表和窗口／全屏切换。全屏修复由游戏渲染器统一更新 Metal 画布及内部尺寸，避免尺寸竞争误触发设备丢失和纹理／字体重载。三轮全屏往返未出现该错误，抽查的字体和按钮纹理绑定及像素哈希稳定。
+
+尚未验证 26.60 的世界载入和保存、长时间游戏、多屏切换及多人联机。本次未取得完整异常 GPU 回放，自动窗口采集的部分过渡画面差异尚未完全归因。构建完整性检查不能代替运行验证。
 
 ## 参考
 

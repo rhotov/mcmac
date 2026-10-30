@@ -442,7 +442,7 @@ def json_safe(value):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("ipa", nargs="?", type=Path, default=ROOT / "Minecraft_ipa_ios_1.26.13.0.ipa")
+    parser.add_argument("ipa", nargs="?", type=Path, default=ROOT / "MCPE-iOS-26.60-universal.ipa")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/Minecraft.app")
     parser.add_argument("--shim", type=Path, help="Optional Catalyst dylib to inject as libmcmac.dylib")
     parser.add_argument("--offline", action="store_true", help="Build without any network entitlements for offline validation")

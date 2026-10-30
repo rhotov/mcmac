@@ -1,5 +1,5 @@
 // Window-local metrics for the original iOS controller's desktop presentation.
-// Synchronize the public MTKView drawable size after the existing layout flow.
+// The renderer owns drawable resizing, together with its cached resolution.
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
@@ -64,27 +64,19 @@ static BOOL WindowPixelSize(id receiver, CGSize *size) {
     return isfinite(size->width) && isfinite(size->height);
 }
 
-static void SynchronizeWindowDrawable(id receiver, BOOL force) {
-    CGSize desired;
-    if (!WindowPixelSize(receiver, &desired)) return;
+static void ConfigureRendererOwnedDrawable(id receiver) {
+    if (![receiver isKindOfClass:UIViewController.class]) return;
     UIView *view = [(UIViewController *)receiver viewIfLoaded];
-    SEL getter = NSSelectorFromString(@"drawableSize");
-    SEL setter = NSSelectorFromString(@"setDrawableSize:");
-    if (![view respondsToSelector:getter] || ![view respondsToSelector:setter]) return;
-    CGSize cached = ((CGSize (*)(id, SEL))objc_msgSend)(view, getter);
-    id layer = view.layer;
-    BOOL layerHasSize = [layer respondsToSelector:getter] && [layer respondsToSelector:setter];
-    CGSize actual = layerHasSize ? ((CGSize (*)(id, SEL))objc_msgSend)(layer, getter) : cached;
-    // The game's C++ renderer can change CAMetalLayer directly while MTKView's
-    // cached drawableSize stays unchanged. Reassert the public view property
-    // after initView, and verify the public layer property independently.
-    if (force || !CGSizeEqualToSize(cached, desired) || !CGSizeEqualToSize(actual, desired))
-        ((void (*)(id, SEL, CGSize))objc_msgSend)(view, setter, desired);
-    if (layerHasSize) {
-        actual = ((CGSize (*)(id, SEL))objc_msgSend)(layer, getter);
-        if (!CGSizeEqualToSize(actual, desired))
-            ((void (*)(id, SEL, CGSize))objc_msgSend)(layer, setter, desired);
-    }
+    Class metalView = NSClassFromString(@"MTKView");
+    SEL setter = NSSelectorFromString(@"setAutoResizeDrawable:");
+    if (!metalView || ![view isKindOfClass:metalView] || ![view respondsToSelector:setter]) return;
+    // bgfx checks CAMetalLayer.drawableSize against its own resolution at
+    // frame submission. Changing the layer before it consumes setRenderingSize
+    // triggers Fatal::DeviceLost ("Swapchain mismatches initialized resolution")
+    // and a destructive texture/font reload. MTKView's automatic resize has the
+    // same race. Let the game's normal swapchain resize update both together;
+    // MTKView's separate cached drawableSize is not the renderer's authority.
+    ((void (*)(id, SEL, BOOL))objc_msgSend)(view, setter, NO);
 }
 
 static Method OwnDisplayMethod(Class cls, SEL selector) {
@@ -170,10 +162,10 @@ static BOOL PerformOriginalInitView(id receiver, SEL selector, IMP original, cha
     BOOL validApplied = WindowPixelSize(receiver, &appliedSize);
     BOOL validLatest = NO;
     @try {
+        ConfigureRendererOwnedDrawable(receiver);
         success = kind == 'c' ? ((signed char (*)(id, SEL))original)(receiver, selector) != 0 :
                                ((BOOL (*)(id, SEL))original)(receiver, selector);
         validLatest = WindowPixelSize(receiver, &latestSize);
-        if (success) SynchronizeWindowDrawable(receiver, YES);
     } @finally {
         @synchronized (state) {
             --state->initDepth;
@@ -281,6 +273,8 @@ static BOOL InstallPointerLayout(Class cls) {
     IMP original = method_getImplementation(method);
     if (!original) return NO;
     IMP replacement = imp_implementationWithBlock(^void(id receiver) {
+        // Keep the policy established by initView when layout is notified.
+        ConfigureRendererOwnedDrawable(receiver);
         ((void (*)(id, SEL))original)(receiver, selector);
         if (![receiver isKindOfClass:UIViewController.class]) return;
         UIView *view = [(UIViewController *)receiver viewIfLoaded];
@@ -295,10 +289,7 @@ static BOOL InstallPointerLayout(Class cls) {
             pointer.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
             if (!CGRectEqualToRect(pointer.frame, bounds)) pointer.frame = bounds;
         }
-        // The iOS client initializes its Metal drawable from UIScreen, which
-        // does not follow a desktop window. Use MTKView's public property with
-        // its CGSize ABI, then refresh the game's own cached dimensions below.
-        SynchronizeWindowDrawable(receiver, NO);
+        // Refresh the game's dimensions; its render thread owns the layer.
         ScheduleDisplayResize(receiver);
     });
     return PutDisplayMethod(cls, selector, method, replacement);
