@@ -12,6 +12,7 @@ extern void MCMacInstallTerminationFix(void);
 extern void MCMacInstallSyntheticMouseBridge(void);
 extern void MCMacInstallRunLoopPump(void);
 extern void MCMacInstallSyntheticKeyboardBridge(void);
+extern void MCMacInstallKeyboardRoutingFix(void);
 extern void MCMacLogGeometry(void);
 extern void MCMacInstallDisplayMetricsFix(void);
 
@@ -98,6 +99,7 @@ __attribute__((constructor)) static void MCMacInitialize(void) {
     MCMacInstallSyntheticMouseBridge();
     MCMacInstallRunLoopPump();
     MCMacInstallSyntheticKeyboardBridge();
+    MCMacInstallKeyboardRoutingFix();
     if (getenv("MCMAC_DIAGNOSTICS"))
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ MCMacLogGeometry(); });
 }

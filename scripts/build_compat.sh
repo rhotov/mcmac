@@ -15,6 +15,7 @@ xcrun clang -target arm64-apple-ios15.0-macabi \
   "$project_dir/compat/input.m" \
   "$project_dir/compat/termination.m" "$project_dir/compat/synthetic_mouse.m" \
   "$project_dir/compat/runloop.m" "$project_dir/compat/synthetic_keyboard.m" \
+  "$project_dir/compat/keyboard_routing.m" \
   "$project_dir/compat/button_state.m" \
   "$project_dir/compat/display_metrics.m" \
   "$project_dir/compat/geometry.m" \
